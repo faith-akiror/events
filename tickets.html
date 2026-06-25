@@ -281,65 +281,63 @@
             downloadAs(elementId, filename, 'jpg');
         }
 
-        function shareTicket(elementId, names, eventName) {
-            const shareOption = prompt("How would you like to share this ticket? Enter 'email' or 'whatsapp'.");
+        async function shareTicket(elementId, names, eventName) {
+            const ticketElement = document.getElementById(elementId);
+            if (!ticketElement) return;
 
-            if (!shareOption) return; // User cancelled
+            // Generate the ticket image as a file
+            const canvas = await html2canvas(ticketElement, { scale: 2 });
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const file = new File([blob], 'ticket.png', { type: 'image/png' });
+
+            // --- Primary Method: Web Share API ---
+            // This is the best user experience, as it opens the native share dialog.
+            if (navigator.share && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        title: `Ticket for ${eventName}`,
+                        text: `Here is the event ticket for ${names}.`,
+                        files: [file],
+                    });
+                    return; // Success, no need for fallback
+                } catch (error) {
+                    // User might have cancelled the share, so we don't show an error.
+                    // If it's a real error, it will be in the console.
+                    console.error('Error using Web Share API:', error);
+                }
+            }
+
+            // --- Fallback Method: Manual Share ---
+            // This runs if the Web Share API is not supported by the browser.
+            alert("Your browser doesn't support direct sharing. We'll open WhatsApp for you, but you'll need to attach the ticket manually.");
+            
+            if (confirm("First, do you want to download the ticket as a JPG to make it easier to attach?")) {
+                downloadAsJPG(elementId, `${names.split(',')[0]}-ticket.jpg`);
+            }
+
+            const shareOption = prompt("To continue, please enter 'whatsapp' or 'email' to open the respective app.");
+            if (!shareOption) return;
 
             const option = shareOption.toLowerCase().trim();
 
-            if (option === 'email') {
-                const email = prompt("Please enter the recipient's email address:");
-                if (email) {
-                    const subject = `Your ticket for ${eventName}`;
-                    const body = `Hi ${names},\n\nHere is your ticket for the event: ${eventName}.\n\nPlease download the attached image and present it at the entrance.\n\nBest regards,\nFaith Events Co`;
-                    
-                    // Note: Attaching images directly via mailto is not universally supported.
-                    // This approach opens the user's email client with the details pre-filled.
-                    // The user must manually attach the downloaded ticket JPG.
-                    alert("Your email client will now open. Please download the ticket as a JPG and attach it to the email before sending.");
-
-                    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                    window.location.href = mailtoLink;
-                }
-            } else if (option === 'whatsapp') {
+            if (option === 'whatsapp') {
                 let phone = prompt("Please enter the recipient's phone number (with country code, e.g., 263773402318):");
                 if (phone) {
-                    // Basic validation: remove non-digit characters
                     phone = phone.replace(/\D/g, '');
-                    const message = `Hi ${names}! Here is your ticket for the event: ${eventName}. Please download the image and present it at the entrance.`;
-
-                    // Note: The WhatsApp URL scheme does not support sending files directly.
-                    // This will open a chat with the pre-filled message.
-                    // The user must manually attach the downloaded ticket JPG.
-                    alert("WhatsApp will now open. Please download the ticket as a JPG and send it in the chat.");
-
+                    const message = `Hi ${names}! Here is your ticket for the event: ${eventName}. Please attach the ticket image you just downloaded.`;
                     const whatsappLink = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
                     window.open(whatsappLink, '_blank');
                 }
-            } else if (navigator.share) {
-                // Fallback to original Web Share API if available and input is not recognized
-                const ticketElement = document.getElementById(elementId);
-                html2canvas(ticketElement, { scale: 2 }).then(canvas => {
-                    canvas.toBlob(blob => {
-                        const file = new File([blob], 'ticket.png', { type: 'image/png' });
-                        navigator.share({
-                            title: `Ticket for ${eventName}`,
-                            text: `Here is the event ticket for ${names}.`,
-                            files: [file],
-                        }).catch(error => console.error('Error sharing:', error));
-                    }, 'image/png');
-                });
-            }
-            else {
-                alert("Invalid option. Please enter 'email' or 'whatsapp'.");
-            }
-
-            // Suggest downloading the ticket for easy attachment
-            if (option === 'email' || option === 'whatsapp') {
-                if(confirm("Do you want to download the ticket as a JPG now to make it easier to attach?")) {
-                    downloadAsJPG(elementId, `${names.split(',')[0]}-ticket.jpg`);
+            } else if (option === 'email') {
+                const email = prompt("Please enter the recipient's email address:");
+                if (email) {
+                    const subject = `Your ticket for ${eventName}`;
+                    const body = `Hi ${names},\n\nHere is your ticket for the event: ${eventName}.\n\nPlease attach the ticket image you just downloaded.\n\nBest regards,\nFaith Events Co`;
+                    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                    window.location.href = mailtoLink;
                 }
+            } else {
+                alert("Invalid option selected.");
             }
         }
 
