@@ -300,7 +300,7 @@
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
             const file = new File([blob], 'ticket.png', { type: 'image/png' });
 
-            const shareMessage = `Thank you for registering, ${names}! Here is your ticket for ${eventName}. See you at ${eventVenue} at ${eventTime}!`;
+            const shareMessage = `Here is your ticket for ${eventName}. Thank you for registering! Remember to carry it for checkin! See you at ${eventVenue} at ${eventTime}.`;
 
             // --- Primary Method: Web Share API ---
             // This is the best user experience, as it opens the native share dialog.
