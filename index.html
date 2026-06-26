@@ -37,7 +37,7 @@
                 <input type="hidden" id="editingEventId">
                 <input type="text" id="eventName" placeholder="Event Name" required>
                 <input type="date" id="eventDate" required>
-                <input type="text" id="eventVenue" placeholder="Abha" required>
+                <input type="text" id="eventVenue" placeholder="Event Venue" required>
                 <input type="time" id="eventTime" required>
                 <button type="submit" id="submit-button">Create Event</button>
                 <button type="button" id="cancel-edit-button" onclick="resetForm()" style="display: none; background-color: #6c757d;">Cancel Edit</button>
@@ -50,16 +50,21 @@
         <div class="container" style="margin-top: 30px;">
             <h2>Admin Actions</h2>
             <p>Warning: These actions cannot be undone.</p>
-            <button onclick="clearAllTickets()" style="background-color: #dc3545;">Clear All Registered Tickets</button>
+            <button onclick="deleteAllTickets()" style="background-color: #dc3545;">Clear All Registered Tickets</button>
+            <button onclick="seedInitialDataToFirestore()" style="background-color: #ffc107; color: #212529;">Seed Initial Events</button>
         </div>
     </div>
 
 
+    <!-- Firebase SDKs must be loaded first -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Then your Firebase config -->
+    <script src="firebase-init.js"></script>
+    <!-- Then your app logic and data files -->
     <script src="events-data.js"></script>
     <script src="app.js"></script>
     <script>
-        // CRITICAL: Initialize data to prevent overwriting existing events on load.
-        // This will now be called after successful login.
 
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -69,59 +74,42 @@
             // You can change this password to whatever you like.
             const CORRECT_PASSWORD = 'faithadmin';
 
+            console.log('Login attempt started');
+            console.log('Password entered:', password);
+
             if (password === CORRECT_PASSWORD) {
+                console.log('Password is correct');
                 // Hide login and show main content
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('main-content').style.display = 'block';
+                const loginOverlay = document.getElementById('login-overlay');
+                const mainContent = document.getElementById('main-content');
+                
+                console.log('Hiding login overlay');
+                loginOverlay.style.display = 'none';
+                
+                console.log('Showing main content');
+                mainContent.style.display = 'block';
                 
                 // Store login state in sessionStorage to stay logged in during the session
                 sessionStorage.setItem('isLoggedIn', 'true');
+                console.log('Session storage updated');
 
-                // Now initialize data and render events
-                initializeData();
-                renderEvents();
+                // Now that we are logged in, initialize the admin functionality
+                console.log('Calling initializeAdminPage');
+                try {
+                    initializeAdminPage();
+                    console.log('initializeAdminPage completed');
+                } catch (error) {
+                    console.error('Error in initializeAdminPage:', error);
+                }
             } else {
+                console.log('Password is incorrect');
                 loginError.style.display = 'block';
             }
         });
-        
-        
-        document.getElementById('eventForm').addEventListener('submit', function(e) {
-            e.preventDefault();
 
-            const editingId = document.getElementById('editingEventId').value;
-            const events = getEvents();
-
-            if (editingId) {
-                // Update existing event
-                const eventToUpdate = events.find(event => event.id === editingId);
-                if (eventToUpdate) {
-                    eventToUpdate.name = document.getElementById('eventName').value;
-                    eventToUpdate.date = document.getElementById('eventDate').value;
-                    eventToUpdate.venue = document.getElementById('eventVenue').value;
-                    eventToUpdate.time = document.getElementById('eventTime').value;
-                    alert(`Event "${eventToUpdate.name}" updated successfully!`);
-                }
-            } else {
-                // Create new event
-                const newEvent = {
-                    id: 'evt-' + uuid(),
-                    name: document.getElementById('eventName').value,
-                    date: document.getElementById('eventDate').value,
-                    venue: document.getElementById('eventVenue').value,
-                    time: document.getElementById('eventTime').value,
-                };
-                events.push(newEvent);
-                alert(`Event "${newEvent.name}" created successfully!`);
-            }
-
-            saveEvents(events);
-            resetForm();
-            renderEvents();
-        });
-
-        function renderEvents() {
-            const events = getEvents();
+        async function renderEvents() {
+            // Fetch events from Firestore
+            const events = await getEvents();
             const listElement = document.getElementById('event-list');
             listElement.innerHTML = '';
 
@@ -145,9 +133,8 @@
             });
         }
 
-        function editEvent(eventId) {
-            const events = getEvents();
-            const eventToEdit = events.find(event => event.id === eventId);
+        async function editEvent(eventId) {
+            const eventToEdit = await getEventById(eventId);
             if (!eventToEdit) return;
 
             document.getElementById('editingEventId').value = eventToEdit.id;
@@ -170,85 +157,58 @@
             document.getElementById('cancel-edit-button').style.display = 'none';
         }
 
-        window.onload = function() {
+        // This function sets up all the event listeners and initial rendering for the main content.
+        // It should only be called AFTER a successful login.
+        function initializeAdminPage() {
+            document.getElementById('eventForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const editingId = document.getElementById('editingEventId').value;
+                const eventData = {
+                    name: document.getElementById('eventName').value,
+                    date: document.getElementById('eventDate').value,
+                    venue: document.getElementById('eventVenue').value,
+                    time: document.getElementById('eventTime').value,
+                };
+
+                try {
+                    if (editingId) {
+                        await updateEvent(editingId, eventData);
+                        alert(`Event "${eventData.name}" updated successfully!`);
+                    } else {
+                        // Create new event in Firestore. Note: Firestore auto-generates IDs with .add()
+                        // If you want to use your own IDs, you need to use .doc(id).set()
+                        await createEvent(eventData);
+                        alert(`Event "${eventData.name}" created successfully!`);
+                    }
+                } catch (error) {
+                    console.error("Error saving event: ", error);
+                    alert("Failed to save event. See console for details.");
+                }
+
+                resetForm();
+                renderEvents();
+            });
+
+            // Initial render of events when the page is shown.
+            renderEvents().catch(error => {
+                console.error('Error rendering events:', error);
+                const listElement = document.getElementById('event-list');
+                if (listElement) {
+                    listElement.innerHTML = '<p style="color: red;">Error loading events. Please check Firebase configuration and ensure you have seeded initial data.</p>';
+                }
+            });
+        }
+
+        window.addEventListener('load', () => {
             // Check if user is already logged in for this session
             if (sessionStorage.getItem('isLoggedIn') === 'true') {
                 document.getElementById('login-overlay').style.display = 'none';
                 document.getElementById('main-content').style.display = 'block';
-                initializeData(); // Also call here to be safe
-                renderEvents();
+                initializeAdminPage(); // Initialize the page since we are already logged in.
             }
             // Otherwise, the login overlay will remain visible by default.
-        };
+        });
     </script>
-    <style>
-        .main-header {
-            background-color: #007bff;
-            color: white;
-            padding: 15px 0;
-            font-size: 1.5em;
-            font-weight: bold;
-            text-align: center;
-        }
-        .header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: transparent; /* Override white background from .container */
-            box-shadow: none; /* Override shadow from .container */
-            padding: 0; /* Override padding from .container */
-        }
-        .main-nav a {
-            color: white;
-            text-decoration: none;
-            font-size: 0.8em;
-            font-weight: normal;
-        }
-        .header-brand {
-            color: white;
-            text-decoration: none;
-        }
-        .event-list-card {
-            position: relative;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 10px;
-            display: flex; /* Use flexbox */
-            align-items: center; /* Vertically align items */
-            justify-content: space-between; /* Push items to ends */
-        }
-        .event-info-wrapper {
-            flex-grow: 1; /* Allow the info to take up available space */
-            margin-right: 10px; /* Space between info and button */
-        }
-        .edit-button {
-            /* No longer needs absolute positioning with flexbox */
-            position: static; /* Reset position */
-            transform: none; /* Reset transform */
-            margin-left: auto; /* Push button to the right */
-            background-color: #17a2b8;
-            width: auto; /* Override the 100% width from styles.css on mobile */
-            padding: 10px 15px; /* Restore original padding */
-        }
-
-        /* Login Overlay Styles */
-        #login-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .login-container {
-            max-width: 400px;
-        }
-    </style>
 </body>
 </html>

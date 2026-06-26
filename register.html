@@ -39,12 +39,14 @@
     </div>
 
     <!-- Data scripts must be included first -->
-    <script src="events-data.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="firebase-init.js"></script>
+
     <script src="app.js"></script>
     <script>
-        initializeData(); // Ensure data is loaded from events-data.js if not in localStorage
-
-        document.getElementById('registrationForm').addEventListener('submit', function(e) {
+        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('eventId');
@@ -66,10 +68,15 @@
             };
 
             // Use the new saveAttendee function
-            saveAttendee(eventId, newAttendee);
-            showToast(`Registered: ${newAttendee.names.join(', ')}`, 'success');
-            this.reset(); // Clear the form
-            updateRegistrationForm(); // Reset fields to default
+            try {
+                await saveAttendee(eventId, newAttendee);
+                showToast(`Registered: ${newAttendee.names.join(', ')}`, 'success');
+                this.reset(); // Clear the form
+                updateRegistrationForm(); // Reset fields to default
+            } catch (error) {
+                console.error("Error saving attendee: ", error);
+                showToast('Failed to register attendee. Please try again.', 'error');
+            }
         });
 
         function updateRegistrationForm() {
@@ -101,14 +108,14 @@
         }
 
         // Initial call to set up the form for one person
-        window.onload = function() {
+        window.onload = async function() {
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('eventId');
             if (!eventId) {
                 window.location.href = 'index.html';
                 return;
             }
-            const event = getEventById(eventId);
+            const event = await getEventById(eventId);
             if (event) {
                 document.getElementById('event-name-header').textContent = `Registering for: ${event.name}`;
                 document.getElementById('back-to-dashboard-nav').href = `dashboard.html?eventId=${eventId}`;

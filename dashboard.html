@@ -33,9 +33,13 @@
     </div>
   </div>
 </div>
+<!-- Firebase SDKs must be loaded before app.js -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="firebase-init.js"></script>
 <script src="app.js"></script>
 <script>
-  window.onload = function() {
+  window.onload = async function() {
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('eventId');
 
@@ -43,16 +47,20 @@
       window.location.href = 'index.html';
       return;
     }
-
-    const event = getEventById(eventId);
-    if (!event) {
-      alert('Event not found!');
-      window.location.href = 'index.html';
-      return;
+    
+    try {
+        const event = await getEventById(eventId);
+        if (!event) {
+          alert('Event not found!');
+          window.location.href = 'index.html';
+          return;
+        }
+        document.getElementById('event-name').textContent = event.name;
+        document.getElementById('event-details').innerHTML = `<strong>Date:</strong> ${event.date} | <strong>Venue:</strong> ${event.venue} | <strong>Time:</strong> ${event.time}`;
+    } catch (error) {
+        console.error("Failed to load event details:", error);
+        alert("Could not load event details. Please try again.");
     }
-
-    document.getElementById('event-name').textContent = event.name;
-    document.getElementById('event-details').innerHTML = `<strong>Date:</strong> ${event.date} | <strong>Venue:</strong> ${event.venue} | <strong>Time:</strong> ${event.time}`;
     document.getElementById('register-link').href = `register.html?eventId=${eventId}`;
     document.getElementById('tickets-link').href = `tickets.html?eventId=${eventId}`;
     document.getElementById('scan-link').href = `scan.html?eventId=${eventId}`;

@@ -23,24 +23,29 @@
 
     <!-- QR Code Scanning Library -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <script src="events-data.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="firebase-init.js"></script>
     <script src="app.js"></script>
     <script>
         let eventId; // Make eventId globally accessible in this script
 
-        initializeData(); // Ensure data is loaded from events-data.js if not in localStorage
-
-        window.onload = function() {
+        window.onload = async function() {
             const urlParams = new URLSearchParams(window.location.search);
             eventId = urlParams.get('eventId');
             if (!eventId) {
                 window.location.href = 'index.html';
                 return;
             }
-            const event = getEventById(eventId);
-            if (event) {
-                document.getElementById('event-name-header').textContent = `Scanning for: ${event.name}`;
-                document.getElementById('back-to-dashboard').onclick = () => window.location.href = `dashboard.html?eventId=${eventId}`;
+            try {
+                const event = await getEventById(eventId);
+                if (event) {
+                    document.getElementById('event-name-header').textContent = `Scanning for: ${event.name}`;
+                    document.getElementById('back-to-dashboard').onclick = () => window.location.href = `dashboard.html?eventId=${eventId}`;
+                }
+            } catch (error) {
+                console.error("Failed to load event name:", error);
             }
         };
         const video = document.getElementById('video');
@@ -80,24 +85,26 @@
             requestAnimationFrame(tick);
         }
 
-        function handleQRCode(id) {
-            // Get ALL tickets from storage, not just for this event
-            const allTickets = getAllTickets();
-            const ticketIndex = allTickets.findIndex(t => t.id === id && t.eventId === eventId);
+        async function handleQRCode(ticketId) {
             const li = document.createElement('li');
+            const ticketRef = db.collection('tickets').doc(ticketId);
 
-            if (ticketIndex !== -1) {
-                const attendee = allTickets[ticketIndex];
-                if (!attendee.checkedIn) { // First time check-in
-                    allTickets[ticketIndex].checkedIn = true;
-                    allTickets[ticketIndex].checkInTime = new Date().toISOString();
-                    saveAllTickets(allTickets); // Save the entire updated list
-                    const successMsg = `SUCCESS: ${allTickets[ticketIndex].names.join(', ')} checked in.`;
-                    li.textContent = `${successMsg} at ${new Date(attendee.checkInTime).toLocaleTimeString()}`;
+            const doc = await ticketRef.get();
+
+            if (doc.exists && doc.data().eventId === eventId) {
+                const ticket = doc.data();
+                if (!ticket.checkedIn) { // First time check-in
+                    const checkInTime = new Date().toISOString();
+                    await ticketRef.update({
+                        checkedIn: true,
+                        checkInTime: checkInTime
+                    });
+                    const successMsg = `SUCCESS: ${ticket.names.join(', ')} checked in.`;
+                    li.textContent = `${successMsg} at ${new Date(checkInTime).toLocaleTimeString()}`;
                     li.style.backgroundColor = '#d4edda'; // green
                     showToast(successMsg, 'success');
                 } else {
-                    const infoMsg = `INFO: ${attendee.names.join(', ')} is already checked in.`;
+                    const infoMsg = `INFO: ${ticket.names.join(', ')} is already checked in.`;
                     li.textContent = infoMsg;
                     li.style.backgroundColor = '#fff3cd'; // yellow
                     showToast(infoMsg, 'info');
@@ -134,4 +141,5 @@
         }
     </script>
 </body>
+
 </html>

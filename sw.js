@@ -1,12 +1,17 @@
-const CACHE_NAME = 'event-manager-v3';
-// Only cache the core app shell. Other assets will be cached on demand by the fetch handler.
+const CACHE_NAME = 'event-manager-v5'; // Incremented version to force update
+// The core files required for the app to run.
 const urlsToCache = [
-    '/',
-    'index.html',
-    'styles.css',
-    'app.js',
-    'events-data.js',
-    'manifest.json'
+    '/', // This serves index.html at the root
+    'index.html', // The main admin page
+    'dashboard.html', // The event-specific dashboard
+    'register.html', // The attendee registration page
+    'tickets.html', // The page to view/download tickets
+    'scan.html', // The QR code scanner page
+    'checked-in.html', // The page to view checked-in attendees
+    'styles.css', // Main stylesheet
+    'app.js', // Core application logic
+    'firebase-init.js', // Firebase configuration
+    'manifest.json' // PWA manifest
 ];
 
 // Install a service worker
@@ -22,21 +27,30 @@ self.addEventListener('install', event => {
 
 // Cache and return requests
 self.addEventListener('fetch', event => {
+    // Only handle GET requests. Let the browser handle all others (POST, etc.).
+    if (event.request.method !== 'GET') {
+        return; // This will correctly ignore Firebase POST requests.
+    }
+
     event.respondWith(
         caches.match(event.request).then(cachedResponse => {
-            // Stale-While-Revalidate strategy
-            const fetchPromise = fetch(event.request).then(networkResponse => {
-                // Clone the response to put it in the cache.
-                const responseToCache = networkResponse.clone();
-                caches.open(CACHE_NAME).then(cache => {
-                    cache.put(event.request, responseToCache);
+            // Go to the network in the background to update the cache.
+            const fetchPromise = fetch(event.request)
+                .then(networkResponse => {
+                    // Check if we received a valid response
+                    if (networkResponse && networkResponse.status === 200) {
+                        const responseToCache = networkResponse.clone();
+                        caches.open(CACHE_NAME).then(cache => {
+                            cache.put(event.request, responseToCache);
+                        });
+                    }
+                    return networkResponse;
+                })
+                .catch(err => {
+                    // Network request failed, do nothing, the user has the cached version.
                 });
-                // Return the original network response to the browser.
-                return networkResponse;
-            });
-
-            // Return the cached response immediately if it exists,
-            // otherwise, wait for the network response.
+            
+            // Return the cached version immediately (if available), otherwise wait for the network.
             return cachedResponse || fetchPromise;
         })
     );

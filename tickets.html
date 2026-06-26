@@ -137,15 +137,18 @@
     </div>
 
     <!-- Libraries for QR Code, PDF, and JPG generation -->
-    <script src="events-data.js"></script>
-    <script src="app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-    <script>
-        initializeData(); // Ensure data is loaded from events-data.js if not in localStorage
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="firebase-init.js"></script> <!-- Your new config file -->
 
+    <script src="app.js"></script>
+
+    <script>
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('eventId');
@@ -154,22 +157,23 @@
                 return;
             }
 
-            const event = getEventById(eventId);
-            if (event) {
-                document.getElementById('event-name-header').textContent = `Tickets for: ${event.name}`;
-                document.getElementById('back-to-dashboard').onclick = () => window.location.href = `dashboard.html?eventId=${eventId}`;
-            }
+            // Fetch data from Firebase
+            displayTickets(eventId);
+        };
 
-            const ticketsForEvent = getTicketsForEvent(eventId);
+        async function displayTickets(eventId) {
+            const event = await getEventById(eventId);
+            document.getElementById('event-name-header').textContent = `Tickets for: ${event.name}`;
+            document.getElementById('back-to-dashboard').onclick = () => window.location.href = `dashboard.html?eventId=${eventId}`;
+            
+            const ticketsForEvent = await getTicketsForEvent(eventId);
             const listElement = document.getElementById('tickets-list');
 
             if (ticketsForEvent.length === 0) {
                 listElement.innerHTML = '<p>No tickets found for this event.</p>';
                 return;
             }
-
-            const { jsPDF } = window.jspdf;
-
+            
             ticketsForEvent
                 .sort((a, b) => a.names[0].localeCompare(b.names[0])) // Sort by first name
                 .forEach((ticket, index) => {
@@ -248,7 +252,7 @@
                         height: 90,
                     });
                 });
-        };
+        }
 
         function downloadAs(elementId, filename, type) {
             const ticketElement = document.getElementById(elementId);
@@ -309,35 +313,26 @@
 
             // --- Fallback Method: Manual Share ---
             // This runs if the Web Share API is not supported by the browser.
-            alert("Your browser doesn't support direct sharing. We'll open WhatsApp for you, but you'll need to attach the ticket manually.");
-            
-            if (confirm("First, do you want to download the ticket as a JPG to make it easier to attach?")) {
-                downloadAsJPG(elementId, `${names.split(',')[0]}-ticket.jpg`);
+            alert("Your browser doesn't support direct sharing. We will guide you through sharing to WhatsApp manually.");
+
+            // Step 1: Prompt to download the ticket
+            if (!confirm("First, you need to save the ticket as a JPG. Click OK to download.")) {
+                return; // User cancelled the download
             }
+            downloadAsJPG(elementId, `${names.split(',')[0]}-ticket.jpg`);
 
-            const shareOption = prompt("To continue, please enter 'whatsapp' or 'email' to open the respective app.");
-            if (!shareOption) return;
-
-            const option = shareOption.toLowerCase().trim();
-
-            if (option === 'whatsapp') {
-                let phone = prompt("Please enter the recipient's phone number (with country code, e.g., 263773402318):");
-                if (phone) {
-                    phone = phone.replace(/\D/g, '');
-                    const message = `Hi ${names}! Here is your ticket for the event: ${eventName}. Please attach the ticket image you just downloaded.`;
-                    const whatsappLink = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-                    window.open(whatsappLink, '_blank');
-                }
-            } else if (option === 'email') {
-                const email = prompt("Please enter the recipient's email address:");
-                if (email) {
-                    const subject = `Your ticket for ${eventName}`;
-                    const body = `Hi ${names},\n\nHere is your ticket for the event: ${eventName}.\n\nPlease attach the ticket image you just downloaded.\n\nBest regards,\nFaith Events Co`;
-                    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                    window.location.href = mailtoLink;
-                }
+            // Step 2: Get the phone number
+            let phone = prompt("Now, enter the recipient's WhatsApp number (with country code, e.g., 263773402318):");
+            if (phone) {
+                phone = phone.replace(/\D/g, '');
+                const message = `Hi ${names}! Here is your ticket for the event: ${eventName}. Please find the ticket image attached.`;
+                const whatsappLink = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                
+                // Step 3: Open WhatsApp and instruct the user
+                alert("A new tab for WhatsApp will open. Please attach the JPG file you just downloaded to the chat and send it.");
+                window.open(whatsappLink, '_blank');
             } else {
-                alert("Invalid option selected.");
+                alert("No phone number entered. Share cancelled.");
             }
         }
 

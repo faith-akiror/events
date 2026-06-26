@@ -5,23 +5,23 @@ function getInitialData() {
     // This data will be loaded into the application.
 
     const events = [
+         {
+             id: 'evt-powerfm-2024',
+             name: 'Power FM Love Family Fun Day',
+             date: '2024-08-10',
+             time: '10:00 AM',
+             venue: 'Harare Gardens',
+             description: 'A fun day for the whole family with music, games, and food. Hosted by Power FM.'
+         },
+        // This is the new event to be seeded.
         {
-            id: 'evt-powerfm-2024',
-            name: 'Power FM Love Family Fun Day',
-            date: '2024-08-10',
+            id: 'evt-junelove-2024',
+            name: 'June Love Family Fun Day',
+            date: '2024-06-15',
             time: '10:00 AM',
             venue: 'Harare Gardens',
-            description: 'A fun day for the whole family with music, games, and food. Hosted by Power FM.'
-        },
-        // Add other events here
-        // {
-        //     id: 'evt-another-event-2024',
-        //     name: 'Another Event',
-        //     date: '2024-09-15',
-        //     time: '06:00 PM',
-        //     venue: 'Some Other Place',
-        //     description: 'Description for another event.'
-        // }
+            description: 'A beautiful day out for the family with a flower theme.'
+        }
     ];
 
     const tickets = [
@@ -37,23 +37,20 @@ function getInitialData() {
             names: ['Jane Smith', 'Peter Pan'],
             checkedIn: true
         },
-        // Add other tickets for any event here
-        // {
-        //     id: 'tkt-001-another',
-        //     eventId: 'evt-another-event-2024',
-        //     names: ['Alice'],
-        //     checkedIn: false
-        // }
+        // Sample tickets for the June Love Family Fun Day
+        {
+            id: 'tkt-001-junelove',
+            eventId: 'evt-junelove-2024',
+            names: ['Michael Scott'],
+            checkedIn: false
+        },
+        {
+            id: 'tkt-002-junelove',
+            eventId: 'evt-junelove-2024',
+            names: ['Dwight Schrute', 'Angela Martin'],
+            checkedIn: false
+        }
     ];
 
     return { events, tickets };
-}
-
-// This function will check if data exists in localStorage and load it from the initial data if not.
-function initializeData() {
-    if (!localStorage.getItem('events') || !localStorage.getItem('tickets')) {
-        const { events, tickets } = getInitialData();
-        localStorage.setItem('events', JSON.stringify(events));
-        localStorage.setItem('tickets', JSON.stringify(tickets));
-    }
 }

@@ -15,26 +15,31 @@
         <div id="checked-in-list"></div>
     </div>
 
-    <script src="events-data.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="firebase-init.js"></script>
     <script src="app.js"></script>
     <script>
-        initializeData(); // Ensure data is loaded from events-data.js if not in localStorage
-
-        window.onload = function() {
+        window.onload = async function() {
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('eventId');
             if (!eventId) {
                 window.location.href = 'index.html';
                 return;
             }
-
-            const event = getEventById(eventId);
-            if (event) {
-                document.getElementById('event-name-header').textContent = `Checked-in for: ${event.name}`;
-                document.getElementById('back-to-dashboard').onclick = () => window.location.href = `dashboard.html?eventId=${eventId}`;
+            
+            try {
+                const event = await getEventById(eventId);
+                if (event) {
+                    document.getElementById('event-name-header').textContent = `Checked-in for: ${event.name}`;
+                    document.getElementById('back-to-dashboard').onclick = () => window.location.href = `dashboard.html?eventId=${eventId}`;
+                }
+            } catch (error) {
+                console.error("Failed to load event name:", error);
             }
 
-            const ticketsForEvent = getTicketsForEvent(eventId);
+            const ticketsForEvent = await getTicketsForEvent(eventId);
             const checkedInTickets = ticketsForEvent.filter(t => t.checkedIn);
             const listElement = document.getElementById('checked-in-list');
 
