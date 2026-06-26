@@ -236,13 +236,13 @@
                                 <div class="ticket-body">
                                     <div class="qr-code-container" id="qr-${ticket.id}"></div>
                                 </div>
-                                <div class="ticket-footer">Created with ❤️ By Faith Creative Studio 0773402318</div>
+                                <div class="ticket-footer">Created with ❤️ By Faith Creative Studio 0773402318/0772307861</div>
                             </div>
                         </div>
                         <div class="actions" style="margin-top: 15px;">
                             <button onclick="downloadAsPDF('${ticketContentId}', '${ticket.names[0]}-ticket.pdf')">Download PDF</button>
                             <button onclick="downloadAsJPG('${ticketContentId}', '${ticket.names[0]}-ticket.jpg')">Download JPG</button>
-                            <button onclick="shareTicket('${ticketContentId}', '${ticket.names.join(', ')}', '${event.name}')">Share Ticket</button>
+                            <button onclick="shareTicket('${ticketContentId}', '${ticket.names.join(', ')}', '${event.name}', '${event.venue}', '${event.time}')">Share Ticket</button>
                         </div>
                     `;
                     contentWrapper.innerHTML = content;
@@ -291,7 +291,7 @@
             downloadAs(elementId, filename, 'jpg');
         }
 
-        async function shareTicket(elementId, names, eventName) {
+        async function shareTicket(elementId, names, eventName, eventVenue, eventTime) {
             const ticketElement = document.getElementById(elementId);
             if (!ticketElement) return;
 
@@ -300,13 +300,15 @@
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
             const file = new File([blob], 'ticket.png', { type: 'image/png' });
 
+            const shareMessage = `Thank you for registering, ${names}! Here is your ticket for ${eventName}. See you at ${eventVenue} at ${eventTime}!`;
+
             // --- Primary Method: Web Share API ---
             // This is the best user experience, as it opens the native share dialog.
             if (navigator.share && navigator.canShare({ files: [file] })) {
                 try {
                     await navigator.share({
-                        title: `Ticket for ${eventName}`,
-                        text: `Here is the event ticket for ${names}.`,
+                        title: `Your Ticket for ${eventName}`,
+                        text: shareMessage,
                         files: [file],
                     });
                     return; // Success, no need for fallback
@@ -331,8 +333,7 @@
             let phone = prompt("Now, enter the recipient's WhatsApp number (with country code, e.g., 263773402318):");
             if (phone) {
                 phone = phone.replace(/\D/g, '');
-                const message = `Hi ${names}! Here is your ticket for the event: ${eventName}. Please find the ticket image attached.`;
-                const whatsappLink = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                const whatsappLink = `https://wa.me/${phone}?text=${encodeURIComponent(shareMessage)}`;
                 
                 // Step 3: Open WhatsApp and instruct the user
                 alert("A new tab for WhatsApp will open. Please attach the JPG file you just downloaded to the chat and send it.");
