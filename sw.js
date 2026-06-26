@@ -1,4 +1,4 @@
-const CACHE_NAME = 'event-manager-v7'; // Incremented version to force update
+const CACHE_NAME = 'event-manager-v8'; // Incremented version to force update
 // The core files required for the app to run.
 const urlsToCache = [
     '/', // This serves index.html at the root
