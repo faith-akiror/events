@@ -16,6 +16,19 @@ async function getEvents() {
     return events;
 }
 
+// Get specific events by an array of their IDs
+async function getEventsByIds(eventIds) {
+    if (!eventIds || eventIds.length === 0) {
+        return [];
+    }
+    // Firestore 'in' query can have a maximum of 10 elements.
+    // For this app, that's likely sufficient. For more, chunking would be needed.
+    const snapshot = await db.collection('events').where(firebase.firestore.FieldPath.documentId(), 'in', eventIds).get();
+    const events = [];
+    snapshot.forEach(doc => events.push({ id: doc.id, ...doc.data() }));
+    return events;
+}
+
 // Save all events to localStorage
 async function createEvent(eventData) {
     // Ensure a description field exists, even if empty, to match the data model.
@@ -88,6 +101,40 @@ async function deleteAllTickets() {
         await batch.commit();
         alert('All ticket data has been deleted.');
     }
+}
+
+// --- USER MANAGEMENT FUNCTIONS ---
+
+// Create a new user in Firestore
+async function createUser(username, password, role, accessibleEvents = []) {
+    // Using .set() with a specific doc ID (the username) prevents duplicate usernames.
+    const userRef = db.collection('users').doc(username);
+    const userData = { password: password, role: role };
+    if (role === 'scanner') {
+        userData.accessibleEvents = accessibleEvents;
+    }
+    await userRef.set(userData);
+}
+
+// Function to clear all registered users from Firestore
+async function deleteAllUsers() {
+    if (confirm('Are you sure you want to delete ALL user accounts? This will remove all created admins and scanners. This cannot be undone.')) {
+        const snapshot = await db.collection('users').get();
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => {
+            // This will delete every user in the 'users' collection.
+            // The hardcoded 'admin'/'faithadmin' login will still work as a fallback.
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        alert('All user accounts have been deleted.');
+    }
+}
+
+// Get a user by their username
+async function getUser(username) {
+    const doc = await db.collection('users').doc(username).get();
+    return doc.exists ? { id: doc.id, ...doc.data() } : null;
 }
 
 // --- ONE-TIME DATA SEEDING ---

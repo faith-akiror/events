@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Event to Scan</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="main-header">
+        <div class="container header-container">
+            <a href="#" class="header-brand">Faith Events Co - Scanner</a>
+            <nav class="main-nav">
+                <a href="#" id="logout-button">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1 id="welcome-message">Scanner Dashboard</h1>
+        <p>Choose an event from the dropdown below to begin scanning.</p>
+        <form id="select-event-form">
+            <select id="event-selector" required style="width: 100%; padding: 10px; margin-bottom: 10px;">
+                <option value="">-- Please choose an event --</option>
+            </select>
+            <button type="submit" class="button">Start Scanning</button>
+        </form>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="firebase-init.js"></script>
+    <script src="app.js"></script>
+    <script>
+        window.addEventListener('load', async () => {
+            const userRole = sessionStorage.getItem('userRole');
+            const username = sessionStorage.getItem('username'); // We need to know WHO is logged in
+
+            // Security Check: Ensure a scanner is logged in
+            if (userRole !== 'scanner' || !username) {
+                sessionStorage.clear(); // Clear stale session data
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Logout functionality
+            document.getElementById('logout-button').addEventListener('click', (e) => {
+                e.preventDefault();
+                sessionStorage.clear();
+                window.location.href = 'index.html';
+            });
+
+            document.getElementById('welcome-message').textContent = `Welcome, ${username}!`;
+
+            // Fetch the logged-in scanner's specific data to get their assigned events
+            const scannerUser = await getUser(username);
+            const accessibleEventIds = scannerUser ? scannerUser.accessibleEvents : [];
+
+            // Fetch only the events this scanner is allowed to see
+            const events = await getEventsByIds(accessibleEventIds);
+
+            const selectElement = document.getElementById('event-selector');
+            const formElement = document.getElementById('select-event-form');
+
+            if (events.length === 0) {
+                selectElement.disabled = true;
+                selectElement.innerHTML = '<option>No events assigned to you</option>';
+                formElement.querySelector('button').disabled = true;
+                return;
+            }
+
+            events.forEach(event => {
+                const option = document.createElement('option');
+                option.value = event.id;
+                option.textContent = event.name;
+                selectElement.appendChild(option);
+            });
+
+            // Handle form submission
+            formElement.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const selectedEventId = selectElement.value;
+                window.location.href = `scan.html?eventId=${selectedEventId}`;
+            });
+        });
+    </script>
+    <!-- We need to store the username on login to use it here -->
+    <script>
+        // This small script should be on the login page (index.html) when a user logs in.
+        // I will add it here for context, but the change is in index.html.
+        /*
+            // In index.html, inside the successful login block:
+            if (user && user.password === password) {
+                sessionStorage.setItem('userRole', user.role);
+                sessionStorage.setItem('username', user.id); // <-- ADD THIS LINE
+            ...
+        */
+    </script>
+
+    <footer class="main-footer-credit">
+        <p>created with ❤️ by Faith Creative Studio 0773402318/0772307861</p>
+    </footer>
+</body>
+</html>

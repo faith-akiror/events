@@ -22,6 +22,12 @@
     <script src="app.js"></script>
     <script>
         window.onload = async function() {
+            // Security Check: Admins only
+            if (sessionStorage.getItem('userRole') !== 'admin') {
+                window.location.href = 'index.html';
+                return;
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('eventId');
             if (!eventId) {

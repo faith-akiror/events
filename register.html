@@ -109,6 +109,12 @@
 
         // Initial call to set up the form for one person
         window.onload = async function() {
+            // Security Check: Admins only
+            if (sessionStorage.getItem('userRole') !== 'admin') {
+                window.location.href = 'index.html';
+                return;
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('eventId');
             if (!eventId) {
@@ -150,5 +156,9 @@
             });
         }
     </script>
+
+    <footer class="main-footer-credit">
+        <p>Created with ❤️ by Faith Creative Studio 0773402318/0772307861</p>
+    </footer>
 </body>
 </html>

@@ -1,9 +1,10 @@
-const CACHE_NAME = 'event-manager-v5'; // Incremented version to force update
+const CACHE_NAME = 'event-manager-v6'; // Incremented version to force update
 // The core files required for the app to run.
 const urlsToCache = [
     '/', // This serves index.html at the root
     'index.html', // The main admin page
     'dashboard.html', // The event-specific dashboard
+    'scanner-dashboard.html', // The new dashboard for scanners
     'register.html', // The attendee registration page
     'tickets.html', // The page to view/download tickets
     'scan.html', // The QR code scanner page
